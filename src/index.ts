@@ -12,7 +12,7 @@ import {
   createThinkModeHook,
   createClaudeCodeHooksHook,
   createAnthropicContextWindowLimitRecoveryHook,
-  createPreemptiveCompactionHook,
+
   createCompactionContextInjector,
   createRulesInjectorHook,
   createBackgroundNotificationHook,
@@ -31,6 +31,7 @@ import {
   createStartWorkHook,
   createSisyphusOrchestratorHook,
   createPrometheusMdOnlyHook,
+  createPreemptiveCompactionHook,
 } from "./hooks";
 import {
   contextCollector,
@@ -145,20 +146,11 @@ const OhMyOpenCodePlugin: Plugin = async (ctx) => {
   )
     ? createAnthropicContextWindowLimitRecoveryHook(ctx, {
         experimental: pluginConfig.experimental,
-        dcpForCompaction: pluginConfig.experimental?.dcp_for_compaction,
       })
     : null;
   const compactionContextInjector = isHookEnabled("compaction-context-injector")
     ? createCompactionContextInjector()
     : undefined;
-  const preemptiveCompaction = isHookEnabled("preemptive-compaction")
-    ? createPreemptiveCompactionHook(ctx, {
-        experimental: pluginConfig.experimental,
-        onBeforeSummarize: compactionContextInjector,
-        getModelLimit: (providerID, modelID) =>
-          getModelLimit(modelCacheState, providerID, modelID),
-      })
-    : null;
   const rulesInjector = isHookEnabled("rules-injector")
     ? createRulesInjectorHook(ctx)
     : null;
@@ -217,6 +209,10 @@ const OhMyOpenCodePlugin: Plugin = async (ctx) => {
   const prometheusMdOnly = isHookEnabled("prometheus-md-only")
     ? createPrometheusMdOnlyHook(ctx)
     : null;
+
+  const preemptiveCompaction = createPreemptiveCompactionHook(ctx, {
+    experimental: pluginConfig.experimental,
+  });
 
   const taskResumeInfo = createTaskResumeInfoHook();
 
@@ -281,6 +277,7 @@ const OhMyOpenCodePlugin: Plugin = async (ctx) => {
     skills: mergedSkills,
     mcpManager: skillMcpManager,
     getSessionID: getSessionIDForMcp,
+    gitMasterConfig: pluginConfig.git_master,
   });
   const skillMcpTool = createSkillMcpTool({
     manager: skillMcpManager,
@@ -318,6 +315,10 @@ const OhMyOpenCodePlugin: Plugin = async (ctx) => {
     },
 
     "chat.message": async (input, output) => {
+      if (input.agent) {
+        setSessionAgent(input.sessionID, input.agent);
+      }
+
       const message = (output as { message: { variant?: string } }).message
       if (firstMessageVariantGate.shouldOverride(input.sessionID)) {
         const variant = resolveAgentVariant(pluginConfig, input.agent)
@@ -419,11 +420,11 @@ const OhMyOpenCodePlugin: Plugin = async (ctx) => {
       await rulesInjector?.event(input);
       await thinkMode?.event(input);
       await anthropicContextWindowLimitRecovery?.event(input);
-      await preemptiveCompaction?.event(input);
       await agentUsageReminder?.event(input);
       await interactiveBashSession?.event(input);
       await ralphLoop?.event(input);
       await sisyphusOrchestrator?.handler(input);
+      await preemptiveCompaction?.event(input);
 
       const { event } = input;
       const props = event.properties as Record<string, unknown> | undefined;

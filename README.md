@@ -5,8 +5,8 @@
 
 > [!TIP]
 >
-> [![The Orchestrator is now available in beta.](./.github/assets/orchestrator-sisyphus.png?v=3)](https://github.com/code-yeongyu/oh-my-opencode/releases/tag/v3.0.0-beta.1)
-> > **The Orchestrator is now available in beta. Use `oh-my-opencode@3.0.0-beta.6` to install it.**
+> [![The Orchestrator is now available in beta.](./.github/assets/orchestrator-sisyphus.png?v=3)](https://github.com/code-yeongyu/oh-my-opencode/releases/tag/v3.0.0-beta.7)
+> > **The Orchestrator is now available in beta. Use `oh-my-opencode@3.0.0-beta.7` to install it.**
 >
 > Be with us!
 >
@@ -258,20 +258,17 @@ If you don't want all this, as mentioned, you can just pick and choose specific 
 
 ### For Humans
 
-> **⚠️ Prerequisite: Bun is required**
->
-> This tool **requires [Bun](https://bun.sh/) to be installed** on your system.
-> Even if you use `npx` to run the installer, the underlying runtime depends on Bun.
-
 Run the interactive installer:
 
 ```bash
-bunx oh-my-opencode install
-# or use npx if bunx doesn't work
 npx oh-my-opencode install
+# or with bun
+bunx oh-my-opencode install
 ```
 
-> **Note for Ubuntu/Debian users**: If you installed Bun via Snap (`/snap/bin/bun`), `bunx` will fail with "script not found" due to Snap's sandboxing. Either use `npx` instead, or reinstall Bun via the official installer: `curl -fsSL https://bun.sh/install | bash`
+> **Note**: The CLI ships with standalone binaries for all major platforms. No runtime (Bun/Node.js) is required for CLI execution after installation.
+>
+> **Supported platforms**: macOS (ARM64, x64), Linux (x64, ARM64, Alpine/musl), Windows (x64)
 
 Follow the prompts to configure your Claude, ChatGPT, and Gemini subscriptions. After installation, authenticate your providers as instructed.
 
@@ -580,11 +577,7 @@ Syntax highlighting, autocomplete, refactoring, navigation, analysis—and now a
 The features in your editor? Other agents can't touch them.
 Hand your best tools to your best colleagues. Now they can properly refactor, navigate, and analyze.
 
-- **lsp_goto_definition**: Jump to symbol definition
-- **lsp_find_references**: Find all usages across workspace
-- **lsp_symbols**: Get symbols from file (scope='document') or search across workspace (scope='workspace')
 - **lsp_diagnostics**: Get errors/warnings before build
-- **lsp_servers**: List available LSP servers
 - **lsp_prepare_rename**: Validate rename operation
 - **lsp_rename**: Rename symbol across workspace
 - **ast_grep_search**: AST-aware code pattern search (25 languages)
@@ -1172,7 +1165,6 @@ Opt-in experimental features that may change or be removed in future versions. U
 ```json
 {
   "experimental": {
-    "preemptive_compaction_threshold": 0.85,
     "truncate_all_tool_outputs": true,
     "aggressive_truncation": true,
     "auto_resume": true
@@ -1180,13 +1172,11 @@ Opt-in experimental features that may change or be removed in future versions. U
 }
 ```
 
-| Option                            | Default | Description                                                                                                                                                                                   |
-| --------------------------------- | ------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `preemptive_compaction_threshold` | `0.85`  | Threshold percentage (0.5-0.95) to trigger preemptive compaction. The `preemptive-compaction` hook is enabled by default; this option customizes the threshold.                               |
-| `truncate_all_tool_outputs`       | `false` | Truncates ALL tool outputs instead of just whitelisted tools (Grep, Glob, LSP, AST-grep). Tool output truncator is enabled by default - disable via `disabled_hooks`.                         |
-| `aggressive_truncation`           | `false` | When token limit is exceeded, aggressively truncates tool outputs to fit within limits. More aggressive than the default truncation behavior. Falls back to summarize/revert if insufficient. |
-| `auto_resume`                     | `false` | Automatically resumes session after successful recovery from thinking block errors or thinking disabled violations. Extracts the last user message and continues.                             |
-| `dcp_for_compaction`              | `false` | Enable DCP (Dynamic Context Pruning) for compaction - runs first when token limit exceeded. Prunes duplicate tool calls and old tool outputs before running compaction.                       |
+| Option                      | Default | Description                                                                                                                                                                                   |
+| --------------------------- | ------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `truncate_all_tool_outputs` | `false` | Truncates ALL tool outputs instead of just whitelisted tools (Grep, Glob, LSP, AST-grep). Tool output truncator is enabled by default - disable via `disabled_hooks`.                         |
+| `aggressive_truncation`     | `false` | When token limit is exceeded, aggressively truncates tool outputs to fit within limits. More aggressive than the default truncation behavior. Falls back to summarize/revert if insufficient. |
+| `auto_resume`               | `false` | Automatically resumes session after successful recovery from thinking block errors or thinking disabled violations. Extracts the last user message and continues.                             |
 
 **Warning**: These features are experimental and may cause unexpected behavior. Enable only if you understand the implications.
 

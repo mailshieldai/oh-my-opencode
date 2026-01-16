@@ -104,7 +104,8 @@ export function createConfigHandler(deps: ConfigHandlerDeps) {
       pluginConfig.agents,
       ctx.directory,
       config.model as string | undefined,
-      pluginConfig.categories
+      pluginConfig.categories,
+      pluginConfig.git_master
     );
 
     // Claude Code agents: Do NOT apply permission migration
@@ -143,6 +144,7 @@ export function createConfigHandler(deps: ConfigHandlerDeps) {
       librarian?: { tools?: Record<string, unknown> };
       "multimodal-looker"?: { tools?: Record<string, unknown> };
       "orchestrator-sisyphus"?: { tools?: Record<string, unknown> };
+      Sisyphus?: { tools?: Record<string, unknown> };
     };
     const configAgent = config.agent as AgentConfig | undefined;
 
@@ -284,39 +286,43 @@ export function createConfigHandler(deps: ConfigHandlerDeps) {
     config.tools = {
       ...(config.tools as Record<string, unknown>),
       "grep_app_*": false,
+      LspHover: false,
+      LspCodeActions: false,
+      LspCodeActionResolve: false,
     };
 
+    type AgentWithPermission = { permission?: Record<string, unknown> };
+    
     if (agentResult.librarian) {
-      agentResult.librarian.tools = {
-        ...agentResult.librarian.tools,
-        "grep_app_*": true,
-      };
+      const agent = agentResult.librarian as AgentWithPermission;
+      agent.permission = { ...agent.permission, "grep_app_*": "allow" };
     }
     if (agentResult["multimodal-looker"]) {
-      agentResult["multimodal-looker"].tools = {
-        ...agentResult["multimodal-looker"].tools,
-        task: false,
-        look_at: false,
-      };
+      const agent = agentResult["multimodal-looker"] as AgentWithPermission;
+      agent.permission = { ...agent.permission, task: "deny", look_at: "deny" };
     }
     if (agentResult["orchestrator-sisyphus"]) {
-      agentResult["orchestrator-sisyphus"].tools = {
-        ...agentResult["orchestrator-sisyphus"].tools,
-        task: false,
-        call_omo_agent: false,
-      };
+      const agent = agentResult["orchestrator-sisyphus"] as AgentWithPermission;
+      agent.permission = { ...agent.permission, task: "deny", call_omo_agent: "deny", sisyphus_task: "allow" };
+    }
+    if (agentResult.Sisyphus) {
+      const agent = agentResult.Sisyphus as AgentWithPermission;
+      agent.permission = { ...agent.permission, call_omo_agent: "deny", sisyphus_task: "allow" };
     }
     if (agentResult["Prometheus (Planner)"]) {
-      (agentResult["Prometheus (Planner)"] as { tools?: Record<string, unknown> }).tools = {
-        ...(agentResult["Prometheus (Planner)"] as { tools?: Record<string, unknown> }).tools,
-        call_omo_agent: false,
-      };
+      const agent = agentResult["Prometheus (Planner)"] as AgentWithPermission;
+      agent.permission = { ...agent.permission, call_omo_agent: "deny", sisyphus_task: "allow" };
+    }
+    if (agentResult["Sisyphus-Junior"]) {
+      const agent = agentResult["Sisyphus-Junior"] as AgentWithPermission;
+      agent.permission = { ...agent.permission, sisyphus_task: "allow" };
     }
 
     config.permission = {
       ...(config.permission as Record<string, unknown>),
       webfetch: "allow",
       external_directory: "allow",
+      sisyphus_task: "deny",
     };
 
     const mcpResult = (pluginConfig.claude_code?.mcp ?? true)

@@ -8,7 +8,7 @@ export { createDirectoryAgentsInjectorHook } from "./directory-agents-injector";
 export { createDirectoryReadmeInjectorHook } from "./directory-readme-injector";
 export { createEmptyTaskResponseDetectorHook } from "./empty-task-response-detector";
 export { createAnthropicContextWindowLimitRecoveryHook, type AnthropicContextWindowLimitRecoveryOptions } from "./anthropic-context-window-limit-recovery";
-export { createPreemptiveCompactionHook, type PreemptiveCompactionOptions, type SummarizeContext, type BeforeSummarizeCallback } from "./preemptive-compaction";
+
 export { createCompactionContextInjector } from "./compaction-context-injector";
 export { createThinkModeHook } from "./think-mode";
 export { createClaudeCodeHooksHook } from "./claude-code-hooks";
@@ -31,3 +31,4 @@ export { createTaskResumeInfoHook } from "./task-resume-info";
 export { createStartWorkHook } from "./start-work";
 export { createSisyphusOrchestratorHook } from "./sisyphus-orchestrator";
 export { createSisyphusTaskRetryHook } from "./sisyphus-task-retry";
+export { createPreemptiveCompactionHook } from "./preemptive-compaction";
