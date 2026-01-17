@@ -1,5 +1,5 @@
 import { describe, test, expect } from "bun:test"
-import { DEFAULT_CATEGORIES, CATEGORY_PROMPT_APPENDS, CATEGORY_DESCRIPTIONS, SISYPHUS_TASK_DESCRIPTION } from "./constants"
+import { DEFAULT_CATEGORIES, CATEGORY_PROMPT_APPENDS, CATEGORY_DESCRIPTIONS, DELEGATE_TASK_DESCRIPTION } from "./constants"
 import type { CategoryConfig } from "../../config/schema"
 
 function resolveCategoryConfig(
@@ -19,7 +19,7 @@ function resolveCategoryConfig(
     return null
   }
 
-  const model = userConfig?.model ?? parentModelString ?? defaultConfig?.model ?? systemDefaultModel
+  const model = userConfig?.model ?? defaultConfig?.model ?? parentModelString ?? systemDefaultModel
   const config: CategoryConfig = {
     ...defaultConfig,
     ...userConfig,
@@ -101,16 +101,16 @@ describe("sisyphus-task", () => {
     })
   })
 
-  describe("SISYPHUS_TASK_DESCRIPTION", () => {
+  describe("DELEGATE_TASK_DESCRIPTION", () => {
     test("documents background parameter as required with default false", () => {
       // #given / #when / #then
-      expect(SISYPHUS_TASK_DESCRIPTION).toContain("background")
-      expect(SISYPHUS_TASK_DESCRIPTION).toContain("Default: false")
+      expect(DELEGATE_TASK_DESCRIPTION).toContain("background")
+      expect(DELEGATE_TASK_DESCRIPTION).toContain("Default: false")
     })
 
     test("warns about parallel exploration usage", () => {
       // #given / #when / #then
-      expect(SISYPHUS_TASK_DESCRIPTION).toContain("5+")
+      expect(DELEGATE_TASK_DESCRIPTION).toContain("5+")
     })
   })
 
@@ -212,15 +212,29 @@ describe("sisyphus-task", () => {
       expect(result!.config.temperature).toBe(0.3)
     })
 
-    test("parentModelString is used when no user model and takes precedence over default", () => {
-      // #given
+    test("category default model takes precedence over parentModelString", () => {
+      // #given - builtin category has default model, parent model should NOT override it
       const categoryName = "visual-engineering"
       const parentModelString = "cliproxy/claude-opus-4-5"
 
       // #when
       const result = resolveCategoryConfig(categoryName, { parentModelString })
 
-      // #then
+      // #then - category default model wins, parent model is ignored for builtin categories
+      expect(result).not.toBeNull()
+      expect(result!.config.model).toBe("google/gemini-3-pro-preview")
+    })
+
+    test("parentModelString is used as fallback when category has no default model", () => {
+      // #given - custom category with no model defined, only parentModelString as fallback
+      const categoryName = "my-custom-no-model"
+      const userCategories = { "my-custom-no-model": { temperature: 0.5 } } as unknown as Record<string, CategoryConfig>
+      const parentModelString = "cliproxy/claude-opus-4-5"
+
+      // #when
+      const result = resolveCategoryConfig(categoryName, { userCategories, parentModelString })
+
+      // #then - parent model is used as fallback since custom category has no default
       expect(result).not.toBeNull()
       expect(result!.config.model).toBe("cliproxy/claude-opus-4-5")
     })
@@ -257,7 +271,7 @@ describe("sisyphus-task", () => {
   describe("category variant", () => {
     test("passes variant to background model payload", async () => {
       // #given
-      const { createSisyphusTask } = require("./tools")
+      const { createDelegateTask } = require("./tools")
       let launchInput: any
 
       const mockManager = {
@@ -283,7 +297,7 @@ describe("sisyphus-task", () => {
         },
       }
 
-      const tool = createSisyphusTask({
+      const tool = createDelegateTask({
         manager: mockManager,
         client: mockClient,
         userCategories: {
@@ -320,17 +334,17 @@ describe("sisyphus-task", () => {
   })
 
   describe("skills parameter", () => {
-    test("SISYPHUS_TASK_DESCRIPTION documents skills parameter with null option", () => {
+    test("DELEGATE_TASK_DESCRIPTION documents skills parameter with null option", () => {
       // #given / #when / #then
-      expect(SISYPHUS_TASK_DESCRIPTION).toContain("skills")
-      expect(SISYPHUS_TASK_DESCRIPTION).toContain("Array of skill names")
-      expect(SISYPHUS_TASK_DESCRIPTION).toContain("Empty array [] is NOT allowed")
-      expect(SISYPHUS_TASK_DESCRIPTION).toContain("null if no skills needed")
+      expect(DELEGATE_TASK_DESCRIPTION).toContain("skills")
+      expect(DELEGATE_TASK_DESCRIPTION).toContain("Array of skill names")
+      expect(DELEGATE_TASK_DESCRIPTION).toContain("Empty array [] is NOT allowed")
+      expect(DELEGATE_TASK_DESCRIPTION).toContain("null if no skills needed")
     })
 
     test("skills parameter is required - returns error when not provided", async () => {
       // #given
-      const { createSisyphusTask } = require("./tools")
+      const { createDelegateTask } = require("./tools")
       
       const mockManager = { launch: async () => ({}) }
       const mockClient = {
@@ -343,7 +357,7 @@ describe("sisyphus-task", () => {
         },
       }
       
-      const tool = createSisyphusTask({
+      const tool = createDelegateTask({
         manager: mockManager,
         client: mockClient,
       })
@@ -373,7 +387,7 @@ describe("sisyphus-task", () => {
 
     test("empty array [] returns error with available skills list", async () => {
       // #given
-      const { createSisyphusTask } = require("./tools")
+      const { createDelegateTask } = require("./tools")
       
       const mockManager = { launch: async () => ({}) }
       const mockClient = {
@@ -386,7 +400,7 @@ describe("sisyphus-task", () => {
         },
       }
       
-      const tool = createSisyphusTask({
+      const tool = createDelegateTask({
         manager: mockManager,
         client: mockClient,
       })
@@ -419,7 +433,7 @@ describe("sisyphus-task", () => {
 
     test("null skills is allowed and proceeds without skill content", async () => {
       // #given
-      const { createSisyphusTask } = require("./tools")
+      const { createDelegateTask } = require("./tools")
       let promptBody: any
       
       const mockManager = { launch: async () => ({}) }
@@ -440,7 +454,7 @@ describe("sisyphus-task", () => {
         },
       }
       
-      const tool = createSisyphusTask({
+      const tool = createDelegateTask({
         manager: mockManager,
         client: mockClient,
       })
@@ -474,7 +488,7 @@ describe("sisyphus-task", () => {
   test("resume with background=false should wait for result and return content", async () => {
     // Note: This test needs extended timeout because the implementation has MIN_STABILITY_TIME_MS = 5000
     // #given
-    const { createSisyphusTask } = require("./tools")
+    const { createDelegateTask } = require("./tools")
     
     const mockTask = {
       id: "task-123",
@@ -507,7 +521,7 @@ describe("sisyphus-task", () => {
       },
     }
     
-    const tool = createSisyphusTask({
+    const tool = createDelegateTask({
       manager: mockManager,
       client: mockClient,
     })
@@ -538,7 +552,7 @@ describe("sisyphus-task", () => {
 
   test("resume with background=true should return immediately without waiting", async () => {
     // #given
-    const { createSisyphusTask } = require("./tools")
+    const { createDelegateTask } = require("./tools")
     
     const mockTask = {
       id: "task-456",
@@ -562,7 +576,7 @@ describe("sisyphus-task", () => {
       config: { get: async () => ({}) },
     }
     
-    const tool = createSisyphusTask({
+    const tool = createDelegateTask({
       manager: mockManager,
       client: mockClient,
     })
@@ -595,7 +609,7 @@ describe("sisyphus-task", () => {
   describe("sync mode new task (run_in_background=false)", () => {
     test("sync mode prompt error returns error message immediately", async () => {
       // #given
-      const { createSisyphusTask } = require("./tools")
+      const { createDelegateTask } = require("./tools")
       
       const mockManager = {
         launch: async () => ({}),
@@ -617,7 +631,7 @@ describe("sisyphus-task", () => {
         },
       }
       
-      const tool = createSisyphusTask({
+      const tool = createDelegateTask({
         manager: mockManager,
         client: mockClient,
       })
@@ -651,7 +665,7 @@ describe("sisyphus-task", () => {
 
     test("sync mode success returns task result with content", async () => {
       // #given
-      const { createSisyphusTask } = require("./tools")
+      const { createDelegateTask } = require("./tools")
       
       const mockManager = {
         launch: async () => ({}),
@@ -678,7 +692,7 @@ describe("sisyphus-task", () => {
         },
       }
       
-      const tool = createSisyphusTask({
+      const tool = createDelegateTask({
         manager: mockManager,
         client: mockClient,
       })
@@ -709,7 +723,7 @@ describe("sisyphus-task", () => {
 
     test("sync mode agent not found returns helpful error", async () => {
       // #given
-      const { createSisyphusTask } = require("./tools")
+      const { createDelegateTask } = require("./tools")
       
       const mockManager = {
         launch: async () => ({}),
@@ -731,7 +745,7 @@ describe("sisyphus-task", () => {
         },
       }
       
-      const tool = createSisyphusTask({
+      const tool = createDelegateTask({
         manager: mockManager,
         client: mockClient,
       })
@@ -763,7 +777,7 @@ describe("sisyphus-task", () => {
 
     test("sync mode passes category model to prompt", async () => {
       // #given
-      const { createSisyphusTask } = require("./tools")
+      const { createDelegateTask } = require("./tools")
       let promptBody: any
 
       const mockManager = { launch: async () => ({}) }
@@ -784,7 +798,7 @@ describe("sisyphus-task", () => {
         app: { agents: async () => ({ data: [] }) },
       }
 
-      const tool = createSisyphusTask({
+      const tool = createDelegateTask({
         manager: mockManager,
         client: mockClient,
         userCategories: {
@@ -888,18 +902,18 @@ describe("sisyphus-task", () => {
       expect(actualModel).toBe("openai/gpt-5.2")
     })
 
-    test("when parentModelString is used - modelInfo should report inherited", () => {
-      // #given
+    test("category default model takes precedence over parentModelString for builtin category", () => {
+      // #given - builtin ultrabrain category has default model gpt-5.2
       const categoryName = "ultrabrain"
       const parentModelString = "cliproxy/claude-opus-4-5"
       
       // #when
       const resolved = resolveCategoryConfig(categoryName, { parentModelString })
       
-      // #then - actualModel should be parentModelString, type should be "inherited"
+      // #then - category default model wins, not the parent model
       expect(resolved).not.toBeNull()
       const actualModel = resolved!.config.model
-      expect(actualModel).toBe(parentModelString)
+      expect(actualModel).toBe("openai/gpt-5.2")
     })
 
     test("when user defines model - modelInfo should report user-defined regardless of parentModelString", () => {
